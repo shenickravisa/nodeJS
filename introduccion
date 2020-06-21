@@ -1,0 +1,8 @@
+instalar node js
+https://nodejs.org/en/
+
+para ingresar a node desde la terminal escribimos 
+>node
+
+para crear un proyecto con node js tenemos que usar el comando 
+>npm init

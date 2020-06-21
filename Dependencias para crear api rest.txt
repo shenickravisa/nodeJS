@@ -1,0 +1,11 @@
+express framkework sobre nodeJS para crear rutas bajo los metodos http
+npm install --save express
+
+convertir los parametros de peticiones de formularios a json sobre cada http
+npm install --save body-parser
+
+mongoose orm para utilizar mongo con node utiliza una capa de abstraccion para listar documentos en node etc. 
+npm install --save mongoose
+
+libreria para subir archivos en node.js 
+npm install --save connect-multiparty
