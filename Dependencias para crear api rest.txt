@@ -9,3 +9,9 @@ npm install --save mongoose
 
 libreria para subir archivos en node.js 
 npm install --save connect-multiparty
+
+libreria para realizar validaciones tipo de dato 
+npm install --save validator
+
+hacer un hot reload cada que se guarda el archivo y que este compile automaticamente
+npm install --save-dev nodemon
