@@ -2,6 +2,10 @@
 'use strict'
 
 var validator = require('validator');
+//eliminar archivos subidos
+var fs = require('fs');
+//acceder a la ruta del proyecto
+var path = require('path')
 //importar el modelo con el que se crea el objeto e interactuan con la BD
 var Article = require('../models/article');
 
@@ -59,11 +63,6 @@ var controller = {
                     article: articleStored
                 });
             });
-            //devolver una respuesta
-            // return res.status(200).send({
-            //     status: 'success',
-            //     article
-            // });
         } else {
             return res.status(200).send({
                 status: 'error',
@@ -127,6 +126,160 @@ var controller = {
                 article
             });
         });
+    },
+    update: (req, res) => {
+        //recoger el id del articulo que viene por la url
+        var articleId = req.params.id
+        //recoger los datos que llegan por put
+        var params = req.body
+        //validar datos
+        try {
+            var validate_title = !validator.isEmpty(params.title) //cuando no venga vacio has true
+            var validate_content = !validator.isEmpty(params.content)
+        } catch (err) {
+            return res.status(200).send({
+                status: 'error',
+                message: 'falta datos por enviar'
+            })
+        }
+        if (validate_title && validate_content) {
+            //este metodo busca por el id que le mandemos como parametro y lo actualiza, params son los parametros
+            //enviados a actualizar y el new true regresa el objeto actualizado, por ultimo una funcion de callback si es error y el objeto actualizado
+            Article.findOneAndUpdate({ _id: articleId },
+                params, { new: true }, (err, articleUpdated) => {
+                    if (err) {
+                        return res.status(500).send({
+                            status: 'error',
+                            message: 'error al actualizar' // si existe un error
+                        })
+                    }
+                    if (!articleUpdated) {
+                        return res.status(404).send({
+                            status: 'error',
+                            message: 'no existe el articulo' // si no existe un articulo actualizado
+                        })
+                    }
+                    return res.status(200).send({
+                        status: 'success',
+                        article: articleUpdated
+                    })
+                })
+        } else {
+            return res.status(200).send({
+                status: 'error',
+                message: 'La validacion no es correcta'
+            })
+        }
+    },
+    delete: (req, res) => {
+        //recoger el id de la url
+        var articleId = req.params.id
+        //find and delete  findOneAndDelete metodo que con base a un id busca y elimina el objeto
+        Article.findOneAndDelete({ _id: articleId }, (err, articleRemoved) => {
+            if (err) {
+                return res.status(500).send({
+                    status: 'error',
+                    message: 'error al eliminar'
+                })
+            }
+            if (!articleRemoved) {
+                return res.status(404).send({
+                    status: 'error',
+                    message: 'No se ha borrado el articulo'
+                })
+            }
+            return res.status(200).send({
+                status: 'success',
+                article: articleRemoved
+            })
+        })
+    },
+    upload: (req, res) => {
+        //configurar el modulo connect multipart router/article.js
+        //reocger el fichero de la peticion 
+        var file_name = 'Imagen no subida'
+        if (!req.files) {
+            return res.status(404).send({
+                status: 'error',
+                message: file_name
+            })
+        }
+        console.log(req.files)
+        //conseguir el nombre y la extension del archivo
+        var file_path = req.files.file0.path;
+        var file_split = file_path.split('/')
+        // en windows es con diagonal invertida
+        //nombre del archivo
+        var file_name = file_split[2]
+        //extension del archivo
+        var extension_split = file_name.split('\.')
+        var file_ext = extension_split[1]
+        //comprobar la extension, solo imagenes y si no eliminar el fichero
+        if (file_ext !== 'png' && file_ext !== 'jpg' && file_ext !== 'jpeg' && file_ext !== 'gif') {
+            //borrar el archivo subido buscado por path
+            fs.unlink(file_path, (err) => {
+                return res.status(200).send({
+                    status: 'error',
+                    message: 'la extension de la imagen no es valida'
+                });
+            })
+        } else {
+            //si todo es valido
+            var articleId = req.params.id
+            //buscar el articulo asignarle el nombre de la imagen y actualizarlo 
+            Article.findOneAndUpdate({ _id: articleId }, { image: file_name }, { new: true }, (err, articleUpdated) => {
+                //image: file_name se le adjuntara como nuevo objeto dentro de la respuesta de articleUpdated
+                if (err || !articleUpdated) {
+                    return res.status(200).send({
+                        status: 'error',
+                        message: 'error al guardar la imagen del articulo'
+                    });
+                }
+                return res.status(200).send({
+                    status: 'success',
+                    article: articleUpdated
+                });
+            })
+        }
+    },
+    getImage: (req, res) => {
+        var file = req.params.image
+        var path_file = './upload/articles/' + file
+        //buscamos la ruta de la imagen dentro de los archivos que se han subido y validamos si existe ese archivo
+        fs.exists(path_file, (exists) => {
+            if (exists) {
+                return res.sendFile(path.resolve(path_file)) // este metodo es propio de express y regresa un archivo solo le mandamos el nombre de la ruta 
+            } else {
+                return res.status(404).send({
+                    status: 'error',
+                    message: 'la imagen no existe'
+
+                });
+            }
+        })
+    },
+    search: (req, res) => {
+        //sacar el string a buscar
+        var searchString = req.params.search
+
+        //find or
+        Article.find({
+            '$or': [{ 'title': { '$regex': searchString, '$options': 'i' } },
+            { 'content': { '$regex': searchString, '$options': 'i' } }
+            ]
+            //expresion regular de mongo $or que si searchString esta incluido en titulo o contenido obtener todo el objeto
+        }).sort([['date', 'descending']]).exec((err, articles) => { // sort ordena y exec ejecuta la query es de mongoDB
+            if (err) {
+                return res.status(500).send({
+                    status: 'error',
+                    message: 'elemento no encontrado'
+                });
+            }
+            return res.status(200).send({
+                status: 'success',
+                articles
+            });
+        })
     }
 
 };
